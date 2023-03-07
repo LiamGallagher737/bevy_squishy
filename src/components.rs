@@ -4,88 +4,68 @@ use bevy::prelude::*;
 
 // Point
 
-/// A singular soft body point
-#[derive(Component, Debug)]
-pub struct Point {
-    /// The points mass, deault is 1.0
-    pub mass: f32,
-    /// The current velocity of this point
-    pub velocity: Vec2,
+/// A singular physics point
+#[derive(Component, Default, PartialEq, Debug)]
+pub enum Point {
+    /// A physics point that will stayed in a fixed position
+    #[default]
+    Fixed,
+    /// A physics point that is affected by forces
+    Dynamic {
+        /// The points mass, deault is 1.0
+        mass: f32,
+        /// The current velocity of this point
+        velocity: Vec2,
+        /// Current force on a point
+        ///
+        /// This should only be edited durning the [`UpdateForcesSet`](crate::UpdateForcesSet) set,
+        /// and in the [`CoreSchedule::FixedUpdate`] schedule.
+        force: Vec2,
+    },
 }
 
-impl Default for Point {
-    fn default() -> Self {
-        Self {
-            mass: 1.0,
-            velocity: Vec2::ZERO,
+impl Point {
+    /// The deault value for a fixed point
+    pub const FIXED: Self = Self::Fixed;
+    /// The deault value for a dynamic point
+    pub const DYNAMIC: Self = Self::Dynamic {
+        mass: 1.0,
+        velocity: Vec2::ZERO,
+        force: Vec2::ZERO,
+    };
+
+    /// A conctructor for [`Point`]
+    pub const fn dynamic(mass: f32, velocity: Vec2) -> Self {
+        Self::Dynamic {
+            mass,
+            velocity,
+            force: Vec2::ZERO,
+        }
+    }
+
+    /// If point is dynamic, return its velocity, else return zero
+    pub fn velocity_or_zero(&self) -> Vec2 {
+        match self {
+            Point::Dynamic { velocity, .. } => *velocity,
+            Point::Fixed => Vec2::ZERO,
         }
     }
 }
 
-impl Point {
-    /// A conctructor for [`Point`]
-    pub fn new(mass: f32, velocity: Vec2) -> Self {
-        Self { mass, velocity }
-    }
-}
-
-/// Current force on a point
-///
-/// This should only be edited durning the [`UpdateForcesSet`](crate::UpdateForcesSet) set,
-/// and in the [`CoreSchedule::FixedUpdate`] schedule.
-#[derive(Component, Default, Deref, DerefMut)]
-pub struct Force(Vec2);
-
-impl Force {
-    pub(crate) fn reset(&mut self) {
-        self.0 = Vec2::ZERO;
-    }
-}
-
-/// Bundle for spawning a singular soft body point in world space
+/// Bundle for spawning a singular physics point in world space
 #[derive(Bundle, Default)]
 pub struct SquishyPointBundle {
-    /// The soft body point
+    /// The physics point
     pub point: Point,
-    /// The current force of the point
-    pub force: Force,
     /// The transforms of the point
     pub transform_bundle: TransformBundle,
 }
 
 impl SquishyPointBundle {
     /// Constructor for creating a [`SquishyPointBundle`] at a certain position
-    pub fn new(translation: Vec2) -> Self {
+    pub fn new(point: Point, translation: Vec2) -> Self {
         Self {
-            point: Point::default(),
-            force: Default::default(),
-            transform_bundle: TransformBundle::from_transform(Transform::from_translation(
-                translation.extend(0.0),
-            )),
-        }
-    }
-}
-
-// Fixed Point
-
-/// A point that will not move
-#[derive(Component, Default)]
-pub struct FixedPoint;
-
-/// Bundle for spawning a singular fixed point in world space
-#[derive(Bundle, Default)]
-pub struct FixedSquishyPointBundle {
-    /// The soft body point
-    pub fixed_point: FixedPoint,
-    /// The transforms of the point
-    pub transform_bundle: TransformBundle,
-}
-
-impl FixedSquishyPointBundle {
-    /// Constructor for creating a [`FixedSquishyPointBundle`] at a certain position
-    pub fn new(translation: Vec2) -> Self {
-        Self {
-            fixed_point: FixedPoint,
+            point,
             transform_bundle: TransformBundle::from_transform(Transform::from_translation(
                 translation.extend(0.0),
             )),
