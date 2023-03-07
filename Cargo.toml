@@ -1,0 +1,15 @@
+[package]
+name = "bevy_squishy"
+version = "0.1.0"
+edition = "2021"
+description = "A plugin for simulating 2D soft body physics in Bevy"
+exclude = [".github/"]
+readme = "README.md"
+repository = "https://github.com/LiamGallagher737/bevy_squishy"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+bevy = "0.10"
+
+[dev-dependencies]
+bevy_mod_gizmos = "0.4"
