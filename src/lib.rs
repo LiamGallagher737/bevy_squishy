@@ -5,6 +5,7 @@ use bevy::{math::Vec3Swizzles, prelude::*};
 
 pub use components::*;
 
+mod collisions;
 mod components;
 
 /// Adds surport for 2D soft bodies in your application
@@ -31,6 +32,7 @@ impl Plugin for SquishyPlugin {
             (
                 add_gravity_force.run_if(resource_exists::<Gravity>()),
                 add_spring_force,
+                collisions::add_collision_forces,
             )
                 .in_set(UpdateForcesSet)
                 .in_schedule(CoreSchedule::FixedUpdate),
@@ -52,69 +54,54 @@ pub struct UpdateForcesSet;
 #[derive(Resource, Debug, Deref, DerefMut)]
 pub struct Gravity(pub Vec2);
 
-fn add_gravity_force(mut query: Query<&mut Point>, gravity: Res<Gravity>) {
+fn add_gravity_force(mut query: Query<&mut DynamicPoint>, gravity: Res<Gravity>) {
     for mut point in &mut query {
-        if let Point::Dynamic {
-            ref mut force,
-            mass: _,
-            velocity: _,
-        } = *point
-        {
-            *force += **gravity;
-        }
+        point.force += **gravity;
     }
 }
 
-fn add_spring_force(mut points: Query<(&mut Point, &Transform)>, springs: Query<&Spring>) {
+fn add_spring_force(mut points: Query<(&mut DynamicPoint, &Transform)>, springs: Query<&Spring>) {
     for spring in &springs {
-        let [(point_a, transform_a), (point_b, transform_b)] = points
+        let [(mut point_a, transform_a), (mut point_b, transform_b)] = points
             .get_many_mut([spring.entity_a, spring.entity_b])
             .unwrap();
 
-        // Skip if both points are fixed
-        if *point_a == Point::Fixed && *point_b == Point::Fixed {
-            continue;
-        }
+        // Calculate spring force
 
         let spring_force = (transform_b.translation.distance(transform_a.translation)
             - spring.rest_length)
             * spring.stiffness;
 
+        // Calculate dampening
+
         let direction = (transform_b.translation - transform_a.translation)
             .normalize()
             .xy();
-        let velocity_diff = point_b.velocity_or_zero() - point_a.velocity_or_zero();
+        let velocity_diff = point_b.velocity - point_a.velocity;
         let dot_prod = direction.dot(velocity_diff);
         let damp = spring.damping * dot_prod;
 
-        for mut point in [point_a, point_b] {
-            if let Point::Dynamic {
-                ref mut force,
-                mass: _,
-                velocity: _,
-            } = *point
-            {
-                // let direction = (transform_a.translation - transform_b.translation)
-                //     .normalize()
-                //     .xy();
-                force.y += (spring_force + damp);
-            }
-        }
+        // Add forces
+
+        let direction = (transform_b.translation - transform_a.translation)
+            .normalize()
+            .xy();
+        point_a.force += (spring_force + damp) * direction;
+
+        let direction = (transform_a.translation - transform_b.translation)
+            .normalize()
+            .xy();
+        point_b.force += (spring_force + damp) * direction;
     }
 }
 
-fn apply_forces(mut query: Query<(&mut Transform, &mut Point)>, time: Res<FixedTime>) {
+fn apply_forces(mut query: Query<(&mut Transform, &mut DynamicPoint)>, time: Res<FixedTime>) {
     let delta_time = time.period.as_secs_f32();
     for (mut transform, mut point) in &mut query {
-        if let Point::Dynamic {
-            ref mut force,
-            ref mut velocity,
-            mass: _,
-        } = *point
-        {
-            transform.translation += velocity.extend(0.0) * delta_time;
-            *velocity += *force * delta_time;
-            *force = Vec2::ZERO;
-        }
+        transform.translation += point.velocity.extend(0.0) * delta_time;
+
+        let force = point.force;
+        point.velocity += force * delta_time;
+        point.force = Vec2::ZERO;
     }
 }

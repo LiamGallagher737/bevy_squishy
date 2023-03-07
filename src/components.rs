@@ -4,83 +4,104 @@ use bevy::prelude::*;
 
 // Point
 
-/// A singular physics point
-#[derive(Component, Default, PartialEq, Debug)]
-pub enum Point {
-    /// A physics point that will stayed in a fixed position
-    #[default]
-    Fixed,
-    /// A physics point that is affected by forces
-    Dynamic {
-        /// The points mass, deault is 1.0
-        mass: f32,
-        /// The current velocity of this point
-        velocity: Vec2,
-        /// Current force on a point
-        ///
-        /// This should only be edited durning the [`UpdateForcesSet`](crate::UpdateForcesSet) set,
-        /// and in the [`CoreSchedule::FixedUpdate`] schedule.
-        force: Vec2,
-    },
+/// Add this component to and entity for it to become a point
+///
+/// Use [`DynamicPointBundle`] to spawn a point which can be affected by forces
+/// or [`FixedPointBundle`] for a point that can't be affected by forces
+#[derive(Component, Default)]
+pub struct Point;
+
+// Dynamic Point
+
+/// A component to add to any point which should be affected by forces
+#[derive(Component, Debug)]
+pub struct DynamicPoint {
+    /// The points mass, deault is 1.0
+    pub mass: f32,
+    /// The current velocity of this point
+    pub velocity: Vec2,
+    /// Current force on a point
+    ///
+    /// This should only be edited durning the [`UpdateForcesSet`](crate::UpdateForcesSet) set,
+    /// and in the [`CoreSchedule::FixedUpdate`] schedule.
+    pub force: Vec2,
 }
 
-impl Point {
-    /// The deault value for a fixed point
-    pub const FIXED: Self = Self::Fixed;
-    /// The deault value for a dynamic point
-    pub const DYNAMIC: Self = Self::Dynamic {
-        mass: 1.0,
-        velocity: Vec2::ZERO,
-        force: Vec2::ZERO,
-    };
-
-    /// A conctructor for [`Point`]
-    pub const fn dynamic(mass: f32, velocity: Vec2) -> Self {
-        Self::Dynamic {
-            mass,
-            velocity,
+impl Default for DynamicPoint {
+    fn default() -> Self {
+        Self {
+            mass: 1.0,
+            velocity: Vec2::ZERO,
             force: Vec2::ZERO,
         }
     }
+}
 
-    /// If point is dynamic, return its velocity, else return zero
-    pub fn velocity_or_zero(&self) -> Vec2 {
-        match self {
-            Point::Dynamic { velocity, .. } => *velocity,
-            Point::Fixed => Vec2::ZERO,
+/// Bundle for spawning a dynamic point in world space
+#[derive(Bundle)]
+pub struct DynamicPointBundle {
+    /// Point marker
+    pub point: Point,
+    /// The dynamic point
+    pub dynamic_point: DynamicPoint,
+    /// Required to have a position in world space
+    pub transform_bundle: TransformBundle,
+}
+
+impl Default for DynamicPointBundle {
+    fn default() -> Self {
+        Self {
+            point: Point::default(),
+            dynamic_point: DynamicPoint::default(),
+            transform_bundle: TransformBundle::default(),
         }
     }
 }
 
-/// Bundle for spawning a singular physics point in world space
+impl DynamicPointBundle {
+    /// Constructor for [`DynamicPointBundle`]
+    pub fn new(dynamic_point: DynamicPoint, position: Vec2) -> Self {
+        Self {
+            dynamic_point,
+            transform_bundle: TransformBundle::from_transform(Transform::from_translation(
+                position.extend(0.0),
+            )),
+            ..Default::default()
+        }
+    }
+}
+
+// Fixed Point
+
+/// Bundle for spawning a fixed point in world space
 #[derive(Bundle, Default)]
-pub struct SquishyPointBundle {
-    /// The physics point
+pub struct FixedPointBundle {
+    /// Point marker
     pub point: Point,
-    /// The transforms of the point
+    /// Required to have a position in world space
     pub transform_bundle: TransformBundle,
 }
 
-impl SquishyPointBundle {
-    /// Constructor for creating a [`SquishyPointBundle`] at a certain position
-    pub fn new(point: Point, translation: Vec2) -> Self {
+impl FixedPointBundle {
+    /// Constructor for [`FixedPointBundle`]
+    pub fn new(position: Vec2) -> Self {
         Self {
-            point,
             transform_bundle: TransformBundle::from_transform(Transform::from_translation(
-                translation.extend(0.0),
+                position.extend(0.0),
             )),
+            ..Default::default()
         }
     }
 }
 
 // Spring
 
-/// A spring use to create a connection between two soft body points
+/// A spring use to create a connection between two [`DynamicPoint`]s
 #[derive(Component, Debug)]
 pub struct Spring {
-    /// The first soft body point, entity must have a [`Point`] component
+    /// The first point, entity must have a [`DynamicPoint`] component
     pub entity_a: Entity,
-    /// The second soft body point, entity must have a [`Point`] component
+    /// The second point, entity must have a [`DynamicPoint`] component
     pub entity_b: Entity,
     /// How stiff this spring should be
     pub stiffness: f32,
@@ -106,5 +127,27 @@ impl Spring {
             rest_length,
             damping,
         }
+    }
+}
+
+// Shape
+
+/// Used to define a physics shape
+///
+/// The final shape must be closed
+#[derive(Component)]
+pub struct Shape {
+    /// The point entities making up this shapes, each entity must have a [`Point`] component
+    /// Points must be in a clockwise order or else you risk incorrect collisions
+    pub points: Vec<Entity>,
+}
+
+impl Shape {
+    /// Constructor for [`Shape`]
+    pub fn new(points: Vec<Entity>) -> Self {
+        if points.len() < 3 {
+            warn!("A physics shape has been constructed with less than 3 points, this is going to cause issues.")
+        }
+        Self { points }
     }
 }

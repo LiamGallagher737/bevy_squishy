@@ -1,14 +1,14 @@
 use bevy::prelude::*;
-use bevy_mod_gizmos::*;
 use bevy_squishy::*;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(GizmosPlugin)
+        .add_plugin(bevy_mod_gizmos::GizmosPlugin)
+        // .add_plugin(bevy_editer_pls::prelude::EditorPlugin)
         .add_plugin(SquishyPlugin::default())
         .add_system(setup.on_startup())
-        .add_systems((log_positions, draw_springs))
+        .add_systems((log_positions, draw_springs, draw_shapes))
         .run();
 }
 
@@ -18,31 +18,45 @@ fn setup(mut commands: Commands) {
         ..Default::default()
     });
 
+    // Spring
+
     let entity_a = commands
-        .spawn(SquishyPointBundle::new(Point::Fixed, Vec2::new(2.0, 4.0)))
+        .spawn(DynamicPointBundle::new(
+            DynamicPoint::default(),
+            Vec2::new(2.0, 8.0),
+        ))
         .id();
 
     let entity_b = commands
-        .spawn(SquishyPointBundle::new(Point::DYNAMIC, Vec2::ZERO))
+        .spawn(DynamicPointBundle::new(DynamicPoint::default(), Vec2::ZERO))
         .id();
 
-    // let entity_c = commands
-    //     .spawn(SquishyPointBundle::new(Point::DYNAMIC, Vec2::Y * -2.0))
-    //     .id();
+    commands.spawn(Spring::new(entity_a, entity_b, 5.0, 5.0, 0.4));
 
-    commands.spawn(Spring::new(entity_a, entity_b, 1.0, 3.0, 0.4));
-    // commands.spawn(Spring::new(entity_b, entity_c, 1.0, 3.0, 0.4));
+    // Floor
+
+    let fixed_a = commands
+        .spawn(FixedPointBundle::new(Vec2::new(-25.0, -15.0)))
+        .id();
+
+    let fixed_b = commands
+        .spawn(FixedPointBundle::new(Vec2::new(25.0, -18.0)))
+        .id();
+
+    let fixed_c = commands
+        .spawn(FixedPointBundle::new(Vec2::new(25.0, -21.0)))
+        .id();
+
+    let fixed_d = commands
+        .spawn(FixedPointBundle::new(Vec2::new(-25.0, -18.0)))
+        .id();
+
+    commands.spawn(Shape::new(vec![fixed_a, fixed_b, fixed_c, fixed_d]));
 }
 
 fn log_positions(query: Query<(&Transform, &Point)>, _time: Res<Time>) {
     for (transform, _point) in &query {
-        // println!(
-        //     "Velocity: {:?}, Transform: {:?}, Time: {:?}",
-        //     point.velocity,
-        //     transform.translation,
-        //     time.elapsed_seconds()
-        // );
-        draw_gizmo(transform.translation);
+        bevy_mod_gizmos::draw_gizmo(transform.translation);
     }
 }
 
@@ -51,6 +65,17 @@ fn draw_springs(points: Query<&Transform, With<Point>>, springs: Query<&Spring>)
         let a = points.get(spring.entity_a).unwrap();
         let b = points.get(spring.entity_b).unwrap();
 
-        draw_line(vec![a.translation, b.translation], Color::GREEN);
+        bevy_mod_gizmos::draw_line(vec![a.translation, b.translation], Color::GREEN);
+    }
+}
+
+fn draw_shapes(points: Query<&Transform, With<Point>>, shapes: Query<&Shape>) {
+    for shape in &shapes {
+        let points: Vec<_> = points
+            .iter_many(&shape.points)
+            .map(|t| t.translation)
+            .collect();
+
+        bevy_mod_gizmos::draw_closed_line(points, Color::BLUE);
     }
 }
