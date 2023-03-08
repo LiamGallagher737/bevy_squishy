@@ -28,20 +28,28 @@ impl Plugin for SquishyPlugin {
             app.insert_resource(Gravity(gravity));
         }
 
+        // 1. Modify forces
         app.add_systems(
             (
                 add_gravity_force.run_if(resource_exists::<Gravity>()),
                 add_spring_force,
-                collisions::add_collision_forces,
             )
                 .in_set(UpdateForcesSet)
                 .in_schedule(CoreSchedule::FixedUpdate),
         );
 
+        // 2. Apply forces
         app.add_system(
             apply_forces
                 .in_schedule(CoreSchedule::FixedUpdate)
                 .after(UpdateForcesSet),
+        );
+
+        // 3. Handle collisions
+        app.add_system(
+            collisions::handle_collisions
+                .in_schedule(CoreSchedule::FixedUpdate)
+                .after(apply_forces),
         );
     }
 }

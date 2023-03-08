@@ -2,7 +2,7 @@ use crate::components::*;
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 
-pub(super) fn add_collision_forces(
+pub(super) fn handle_collisions(
     mut set: ParamSet<(
         Query<(Entity, &mut DynamicPoint, &mut Transform)>,
         Query<(&Point, &Transform)>,
@@ -31,7 +31,8 @@ pub(super) fn add_collision_forces(
             if point_in_shape(dyn_pos, &shape_points, bounds) == true {
                 let new_position = closest_point_on_shape(dyn_pos, &shape_points);
 
-                let vector = (new_position - dyn_transform.translation.xy()).normalize();
+                // This should be normalized but I'm unsure of how to find the rebound force
+                let vector = new_position - dyn_transform.translation.xy();
                 dyn_point.velocity =
                     dyn_point.velocity - 2.0 * (dyn_point.velocity * vector) * vector;
 

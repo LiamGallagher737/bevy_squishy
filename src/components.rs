@@ -16,6 +16,8 @@ pub struct Point;
 /// A component to add to any point which should be affected by forces
 #[derive(Component, Debug)]
 pub struct DynamicPoint {
+    /// The radius of this point used for self collisions
+    pub radius: f32,
     /// The points mass, deault is 1.0
     pub mass: f32,
     /// The current velocity of this point
@@ -30,10 +32,19 @@ pub struct DynamicPoint {
 impl Default for DynamicPoint {
     fn default() -> Self {
         Self {
+            radius: 0.5,
             mass: 1.0,
             velocity: Vec2::ZERO,
             force: Vec2::ZERO,
         }
+    }
+}
+
+impl DynamicPoint {
+    /// Set this points radius to the given value
+    pub fn with_radius(mut self, radius: f32) -> Self {
+        self.radius = radius;
+        self
     }
 }
 
