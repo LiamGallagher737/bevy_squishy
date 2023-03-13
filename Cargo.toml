@@ -13,4 +13,4 @@ bevy = "0.10"
 
 [dev-dependencies]
 bevy_mod_gizmos = "0.4"
-# bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls", branch = "bevy-main" }
+bevy_editor_pls = "0.3"

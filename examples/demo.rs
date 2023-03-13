@@ -9,7 +9,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_mod_gizmos::GizmosPlugin)
-        // .add_plugin(bevy_editer_pls::prelude::EditorPlugin)
+        .add_plugin(bevy_editor_pls::prelude::EditorPlugin)
         .add_plugin(SquishyPlugin::default())
         .add_system(setup.on_startup())
         .add_systems((log_positions, draw_springs, draw_shapes))

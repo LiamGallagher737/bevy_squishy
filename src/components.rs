@@ -49,7 +49,7 @@ impl DynamicPoint {
 }
 
 /// Bundle for spawning a dynamic point in world space
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct DynamicPointBundle {
     /// Point marker
     pub point: Point,
@@ -57,16 +57,6 @@ pub struct DynamicPointBundle {
     pub dynamic_point: DynamicPoint,
     /// Required to have a position in world space
     pub transform_bundle: TransformBundle,
-}
-
-impl Default for DynamicPointBundle {
-    fn default() -> Self {
-        Self {
-            point: Point::default(),
-            dynamic_point: DynamicPoint::default(),
-            transform_bundle: TransformBundle::default(),
-        }
-    }
 }
 
 impl DynamicPointBundle {

@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use crate::components::*;
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
@@ -28,7 +30,7 @@ pub(super) fn handle_collisions(
                 continue;
             }
 
-            if point_in_shape(dyn_pos, &shape_points, bounds) == true {
+            if point_in_shape(dyn_pos, &shape_points, bounds) {
                 let new_position = closest_point_on_shape(dyn_pos, &shape_points);
 
                 // This should be normalized but I'm unsure of how to find the rebound force
@@ -87,7 +89,7 @@ fn intersect_line_segments(a: Vec2, b: Vec2, c: Vec2, d: Vec2) -> bool {
     let ua = ((d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x)) / denom;
     let ub = ((b.x - a.x) * (a.y - c.y) - (b.y - a.y) * (a.x - c.x)) / denom;
 
-    ua >= 0.0 && ua <= 1.0 && ub >= 0.0 && ub <= 1.0
+    (0.0..=1.0).contains(&ua) && (0.0..=1.0).contains(&ub)
 }
 
 fn closest_point_on_shape(point: Vec2, shape: &Vec<Vec2>) -> Vec2 {
